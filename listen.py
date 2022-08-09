@@ -1,4 +1,5 @@
 import os
+from speech_recognition import SpeechRecognition
 import sys
 import deepspeech
 import numpy as np
@@ -8,10 +9,11 @@ from vad_audio import VadAudio
 
 # ----------------------------------------------------------------------------------------------------------------------
 DEFAULT_SAMPLE_RATE = 16000
-VAD_AGGRESSIVENESS = 1  # 0 -> 3, 0 means the least aggressive, 3 the most aggressive
+VAD_AGGRESSIVENESS = 3  # 0 -> 3, 0 means the least aggressive, 3 the most aggressive
 
 MODELS_PATH = 'models'
 # ----------------------------------------------------------------------------------------------------------------------
+
 
 def get_model():
     files = os.listdir(MODELS_PATH)
@@ -23,7 +25,7 @@ def get_model():
     return models[0]
 
 
-def main():
+def sample_recognition():
     print('Initializing model...')
     model_name = get_model()
     model_path = os.path.join(MODELS_PATH, model_name)
@@ -34,22 +36,29 @@ def main():
     vad_audio = VadAudio(aggressiveness=VAD_AGGRESSIVENESS,
                          sample_rate=DEFAULT_SAMPLE_RATE)
     frames = vad_audio.vad_collector()
-    spinner = Halo(spinner='line')
+    spinner = Halo()
 
     # stream from microphone to DeepSpeech using VAD
     stream_context = model.createStream()
     for frame in frames:
         if frame is not None:
-            if spinner:
-                spinner.start()
+            spinner.start()
             stream_context.feedAudioContent(np.frombuffer(frame, np.int16))
         else:
-            if spinner:
-                spinner.stop()
+            spinner.stop()
             text = stream_context.finishStream()
             print("Recognized: " + text)
             stream_context = model.createStream()
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == 'sample':
+        sample_recognition()
+    else:
+        sr = SpeechRecognition()
+        try:
+            sr.run()
+        except KeyboardInterrupt:
+            sr.stop()
+        except Exception:
+            sr.stop()
